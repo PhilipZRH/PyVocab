@@ -120,6 +120,8 @@ class PyVocab(QWidget):
         self.btn_import_dict.clicked.connect(self.bulk_import_dict_helper)
         self.btn_import_dict.move(215, 360)
 
+        self.report_window = ReportWindow(self.main_data, self)
+
     def new_subject(self):
         name, ok = QInputDialog.getText(self, 'Create New Subject', 'Subject Name:')
         if ok:
@@ -231,6 +233,15 @@ class PyVocab(QWidget):
         self.main_data['Subjects'][subject].lessons.pop(lesson_name)
         os.remove('obj/' + subject + '/' + lesson_name + '.pkl')
         self.update_lessons()
+
+    def generate_report(self, mistake):
+        subject = self.subject_list.currentItem().text()
+        lesson = self.lesson_list.currentItem().text()
+        self.report_window.setWindowTitle('Report: ' + subject + ' - ' + lesson)
+        self.report_window.setGeometry(self.geometry())
+        self.report_window.init(mistake)
+        self.report_window.show()
+        self.hide()
 
     def closeEvent(self, event):
         self.import_window.hide()
@@ -447,6 +458,7 @@ class TestWindow(QWidget):
         self.setFixedSize(600, 400)
         self.shuffled_list = None
         self.pointer = 0
+        self.mistake = []
 
         self.entry1 = QTextBrowser(self)
         self.entry1.setGeometry(20, 20, 560, 125)
@@ -464,32 +476,107 @@ class TestWindow(QWidget):
         self.btn_correct = QPushButton("√", self)
         self.btn_correct.setFont(QFont("Roman times", 30, QFont.Normal))
         self.btn_correct.setGeometry(310, 310, 125, 70)
-        self.btn_correct.clicked.connect(self.next)
+        self.btn_correct.clicked.connect(self.yes)
 
         self.btn_error = QPushButton("×", self)
         self.btn_error.setFont(QFont("Roman times", 30, QFont.Normal))
         self.btn_error.setGeometry(455, 310, 125, 70)
-        self.btn_error.clicked.connect(self.next)
+        self.btn_error.clicked.connect(self.no)
 
     def init(self):
+        self.mistake = []
         entry = self.shuffled_list[self.pointer]
-        self.entry1.setText(entry.ent2)
+        self.entry1.setText(entry.ent1)
         self.entry2.setText('')
         self.change_btn_state()
 
-    def next(self):
+    def yes(self):
         self.pointer += 1
+        if self.pointer == len(self.shuffled_list):
+            self.report()
+            return
         entry = self.shuffled_list[self.pointer]
-        self.entry1.setText(entry.ent2)
+        self.entry1.setText(entry.ent1)
+        self.entry2.setText('')
+        self.change_btn_state()
+
+    def no(self):
+        self.mistake.append(self.shuffled_list[self.pointer])
+        self.pointer += 1
+        if self.pointer == len(self.shuffled_list):
+            self.report()
+            return
+        entry = self.shuffled_list[self.pointer]
+        self.entry1.setText(entry.ent1)
         self.entry2.setText('')
         self.change_btn_state()
 
     def show_ans(self):
         entry = self.shuffled_list[self.pointer]
-        self.entry2.setText(entry.ent1)
+        self.entry2.setText(entry.ent2)
 
     def change_btn_state(self):
-        if self.pointer >= len(self.shuffled_list) - 1:
+        if self.pointer >= len(self.shuffled_list):
+            self.btn_correct.setEnabled(False)
+            self.btn_error.setEnabled(False)
+
+    def report(self):
+        self.parent.setGeometry(self.geometry())
+        self.parent.generate_report(self.mistake)
+        self.hide()
+
+    def closeEvent(self, event):
+        self.report()
+        event.accept()
+
+class ReportWindow(QWidget):
+
+    def __init__(self, data, parent):
+        super().__init__()
+        self.main_data = data
+        self.parent = parent
+        self.setFixedSize(600, 400)
+
+        self.num_label = QLabel('######################', self)
+        self.num_label.move(50, 50)
+
+        self.vocab_label = QLabel('Mistakes', self)
+        self.vocab_label.move(280, 20)
+        self.vocab = QScrollArea(self)
+        self.vocab.setGeometry(280, 40, 300, 315)
+        self.vocab_list = QTableWidget(self)
+        self.vocab_list.setFixedWidth(298)
+        self.vocab_list.setMinimumHeight(313)
+        self.vocab_list.setColumnCount(2)
+        self.vocab_list.setHorizontalHeaderLabels(['Entry 1', 'Entry 2'])
+        self.vocab_list.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.vocab.setWidget(self.vocab_list)
+
+        self.mistake = []
+
+    def init(self, mistake):
+        self.mistake = mistake
+        if not mistake:
+            self.num_label.setText('All correct!')
+        else:
+            self.num_label.setText('Number of mistakes: ' + str(len(mistake)))
+
+        row_count = 0
+        for e in mistake:
+            if self.vocab_list.rowCount() <= row_count:
+                self.vocab_list.insertRow(row_count)
+            ent1 = QTableWidgetItem()
+            ent1.setText(e.ent1)
+            ent2 = QTableWidgetItem()
+            ent2.setText(e.ent2)
+            self.vocab_list.setItem(row_count, 0, ent1)
+            self.vocab_list.setItem(row_count, 1, ent2)
+            row_count = row_count + 1
+        while self.vocab_list.rowCount() > row_count:
+            self.vocab_list.removeRow(row_count)
+
+    def change_btn_state(self):
+        if self.pointer >= len(self.shuffled_list):
             self.btn_correct.setEnabled(False)
             self.btn_error.setEnabled(False)
 
@@ -497,6 +584,7 @@ class TestWindow(QWidget):
         self.parent.setGeometry(self.geometry())
         self.parent.show()
         event.accept()
+
 
 
 if __name__ == '__main__':
