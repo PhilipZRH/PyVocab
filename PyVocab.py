@@ -12,6 +12,7 @@ class Subject:
     def __init__(self, name):
         self.name = name
         self.lessons = {}
+        self.is_mistake_book = False
 
     def new_lesson(self, lesson_name):
         self.lessons[lesson_name] = Lesson(self, lesson_name)
@@ -237,6 +238,32 @@ class PyVocab(QWidget):
     def generate_report(self, mistake):
         subject = self.subject_list.currentItem().text()
         lesson = self.lesson_list.currentItem().text()
+
+        if main_data['Subjects'][subject].is_mistake_book:
+            mistake_book_name = subject
+        else:
+            mistake_book_name = "E - " + subject
+
+        if not mistake_book_name in main_data['Subjects']:
+            book = Subject(mistake_book_name)
+            main_data['Subjects'][mistake_book_name] = book
+            book.is_mistake_book = True
+            os.mkdir('obj/' + mistake_book_name)
+            self.update_subjects()
+        else:
+            book = main_data['Subjects'][mistake_book_name]
+
+        if not lesson in book.lessons:
+            list = book.new_lesson(lesson)
+        else:
+            list = book.lessons[lesson]
+
+        list.dict = []
+        for e in mistake:
+            list.add_entry(e.ent1, e.ent2)
+        list.save_dict()
+        list.clear_dict_ref()
+
         self.report_window.setWindowTitle('Report: ' + subject + ' - ' + lesson)
         self.report_window.setGeometry(self.geometry())
         self.report_window.init(mistake)
@@ -312,6 +339,7 @@ class DictImporter(QWidget):
                 QMessageBox.warning(self, 'Warning', 'Failed to process file.')
                 return
         lesson.save_dict()
+        lesson.clear_dict_ref()
         self.subject = None
         self.picked_file = None
         self.parent.update_lessons()
@@ -377,6 +405,7 @@ class BulkDictImporter(QWidget):
             lessons[d[0]].add_entry(d[1], d[2])
         for lesson in lessons:
             lessons[lesson].save_dict()
+            lessons[lesson].clear_dict_ref()
         self.subject = None
         self.picked_file = None
         self.parent.update_lessons()
@@ -485,6 +514,7 @@ class TestWindow(QWidget):
 
     def init(self):
         self.mistake = []
+        self.pointer = 0
         entry = self.shuffled_list[self.pointer]
         self.entry1.setText(entry.ent1)
         self.entry2.setText('')
@@ -582,6 +612,7 @@ class ReportWindow(QWidget):
 
     def closeEvent(self, event):
         self.parent.setGeometry(self.geometry())
+        self.parent.update_vocab()
         self.parent.show()
         event.accept()
 
