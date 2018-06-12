@@ -5,6 +5,7 @@ import sys
 import os
 import pickle
 import random
+import pandas as pd
 
 
 class Subject:
@@ -97,7 +98,7 @@ class PyVocab(QWidget):
         self.btn_new_subject.clicked.connect(self.new_subject)
         self.btn_new_subject.move(15, 360)
 
-        self.btn_import_dict = QPushButton('Import', self)
+        self.btn_import_dict = QPushButton('Load', self)
         self.import_window = DictImporter(self.main_data, self)
         self.btn_import_dict.clicked.connect(self.import_dict_helper)
         self.btn_import_dict.move(145, 360)
@@ -119,7 +120,11 @@ class PyVocab(QWidget):
         self.btn_import_dict = QPushButton('Bulk', self)
         self.bulk_import_window = BulkDictImporter(self.main_data, self)
         self.btn_import_dict.clicked.connect(self.bulk_import_dict_helper)
-        self.btn_import_dict.move(215, 360)
+        self.btn_import_dict.move(205, 360)
+
+        self.btn_save = QPushButton('Save', self)
+        self.btn_save.clicked.connect(self.save_dict)
+        self.btn_save.move(420, 360)
 
         self.report_window = ReportWindow(self.main_data, self)
 
@@ -224,6 +229,23 @@ class PyVocab(QWidget):
         while self.vocab_list.rowCount() > row_count:
             self.vocab_list.removeRow(row_count)
         lesson.clear_dict_ref()
+
+    def save_dict(self):
+        if not self.valid_lesson():
+            QMessageBox.warning(self, 'Warning', 'Select a lesson first!')
+            return
+        subject = self.subject_list.currentItem().text()
+        lesson_name = self.lesson_list.currentItem().text()
+        lesson = self.main_data['Subjects'][subject].lessons[lesson_name]
+        lesson.load_dict()
+        dict = {'Entry 1': [], 'Entry 2': []}
+        for e in lesson.dict:
+            dict['Entry 1'].append(e.ent1)
+            dict['Entry 2'].append(e.ent2)
+        lesson.clear_dict_ref()
+        df = pd.DataFrame(data=dict)
+        df.to_excel(subject + ' - ' + lesson_name + '.xlsx')
+        QMessageBox.information(self, 'Success', 'Success!')
 
     def remove(self):
         if not self.valid_lesson():
