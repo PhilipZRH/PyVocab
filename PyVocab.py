@@ -264,7 +264,7 @@ class PyVocab(QWidget):
         if main_data['Subjects'][subject].is_mistake_book:
             mistake_book_name = subject
         else:
-            mistake_book_name = "E - " + subject
+            mistake_book_name = "(ERR)" + subject
 
         if not mistake_book_name in main_data['Subjects']:
             book = Subject(mistake_book_name)
@@ -634,10 +634,8 @@ class ReportWindow(QWidget):
 
     def closeEvent(self, event):
         self.parent.setGeometry(self.geometry())
-        self.parent.update_vocab()
         self.parent.show()
         event.accept()
-
 
 
 if __name__ == '__main__':
